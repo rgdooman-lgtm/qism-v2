@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>تطبيق قسَم المطور v2</title>
+    <style>
+        :root { --main: #00adb5; --bg: #121212; --panel: #1e1e1e; --text: #eeeeee; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+        body, html { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+        
+        /* واجهة تسجيل الدخول */
+        #login { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+        .login-box { background: var(--panel); padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .login-box h2 { color: var(--main); margin-bottom: 20px; }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #333; border-radius: 8px; background: #2d2d2d; color: #fff; text-align: center; font-size: 16px; }
+        button { width: 100%; padding: 14px; background: var(--main); border: 0; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        #err { color: #ff4a4a; font-size: 14px; margin-top: 10px; }
+
+        /* الشاشة الرئيسية للتطبيق والغرف */
+        #chat-app { display: none; height: 100%; flex-direction: column; }
+        header { background: linear-gradient(135deg, var(--main), #007a80); color: #fff; padding: 15px; text-align: center; font-weight: bold; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+        header span.logout { cursor: pointer; font-size: 14px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 5px; }
+        
+        .main-container { display: flex; flex: 1; height: calc(100% - 54px); overflow: hidden; }
+        
+        /* قائمة غرف الدول العربية */
+        #rooms-sidebar { width: 30%; background: var(--panel); border-left: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; }
+        .room-item { padding: 15px; border-bottom: 1px solid #2d2d2d; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .room-item:hover, .room-item.active { background: #2d2d2d; color: var(--main); }
+        .room-status { font-size: 12px; padding: 2px 6px; border-radius: 4px; }
+        .status-open { background: #2e7d32; color: #fff; }
+        .status-closed { background: #c62828; color: #fff; }
+
+        /* منطقة المحادثة */
+        #chat-zone { width: 70%; display: flex; flex-direction: column; background: #161616; position: relative; }
+        #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg { max-width: 75%; padding: 10px; border-radius: 12px; background: #2d2d2d; align-self: flex-start; word-break: break-word; position: relative; }
+        .msg.me { align-self: flex-end; background: var(--main); color: #fff; }
+        .msg-user { font-size: 12px; font-weight: bold; margin-bottom: 3px; opacity: 0.8; }
+        .msg-img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
+        .msg-seen { font-size: 10px; text-align: left; opacity: 0.6; margin-top: 4px; display: block; }
+
+        /* لوحة تحكم الأدمن والإدخال */
+        #admin-panel { background: #222; padding: 10px; border-bottom: 1px solid #333; display: none; justify-content: space-between; align-items: center; }
+        #input-area { padding: 12px; background: var(--panel); display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; }
+        #fileInput { display: none; }
+        .attach-btn { background: #444; color: white; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 18px; text-align: center; width: 100%; }
+        
+        #coins-badge { background: #ffd700; color: #000; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. واجهة تسجيل الدخول -->
+    <div id="login">
+        <div class="login-box">
+            <h2>تطبيق قسَم المطور v2</h2>
+            <input type="text" id="nameInput" placeholder="اسم المستخدم أو البريد">
+            <input type="password" id="passInput" placeholder="كلمة المرور">
+            <button id="startBtn">دخول / تسجيل حساب جديد</button>
+            <div id="err"></div>
+        </div>
+    </div>
+
+    <!-- 2. الواجهة الرئيسية للغرف والدردشة -->
+    <div id="chat-app">
+        <header>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="app-title">غرف قسَم العربية</span>
+                <span id="coins-badge">🪙 0 عملة</span>
+            </div>
+            <span class="logout" id="logoutBtn">خروج</span>
+        </header>
+        
+        <div class="main-container">
+            <div id="rooms-sidebar"></div>
+            
+            <div id="chat-zone">
+                <div id="admin-panel">
+                    <span id="admin-info">لوحة الإشراف للغرفة</span>
+                    <button id="toggleRoomBtn" style="width: auto; padding: 6px 12px; margin: 0; font-size: 13px;">قفل / فتح الغرفة</button>
+                </div>
+                
+                <div id="messages"></div>
+                
+                <div id="input-area">
+                    <label for="fileInput" class="attach-btn">📷 اضغط هنا لإرسال صورة فقط</label>
+                    <input type="file" id="fileInput" accept="image/*">
+                    <div id="uploadStatus" style="font-size: 14px; opacity: 0.7;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+  import { initializeApp } from "https://gstatic.com";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://gstatic.com";
+  import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, arrayUnion } from "https://gstatic.com";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://gstatic.com";
+
+  // إعدادات Firebase الخاصة بمشروعك قسَم شات لربط السيرفر
+  const firebaseConfig = {
+    apiKey: "AIzaSyDmEv98dCo20qf0vdtDxPC0tWI_7Mw", 
+    authDomain: "://firebaseapp.com",
+    projectId: "qism-chat-2026-merwan",
+    storageBucket: "qism-chat-2026-merwan.firebasestorage.app",
+    messagingSenderId: "413614575776",
+    appId: "1:413614575776:web:20cb34166b122665ed19c5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  let currentUid = null;
+  let currentUsername = "";
+  let currentUserRole = "user"; 
+  let currentRoomId = "Saudi"; 
+  let unsubscribeMessages = null;
+
+  // قائمة الـ 10 غرف للدول العربية الأساسية والمحددة فقط
+  const arabicCountries = [
+    { id: "Saudi", name: "المملكة العربية السعودية" },
+    { id: "Egypt", name: "جمهورية مصر العربية" },
+    { id: "Iraq", name: "العراق" },
+    { id: "Algeria", name: "الجزائر" },
+    { id: "Morocco", name: "المغرب" },
+    { id: "Tunisia", name: "تونس" },
+    { id: "Jordan", name: "الأردن" },
+    { id: "Lebanon", name: "لبنان" },
+    { id: "Syria", name: "سوريا" },
+    { id: "Emirates", name: "الإمارات" }
+  ];
+
+  // إدارة عمليات تسجيل الدخول بالاسم وكلمة المرور وحماية الرتب
+  $("startBtn").onclick = async () => {
+    const inputName = $("nameInput").value.trim();
+    const password = $("passInput").value.trim();
+
+    if (!inputName || !password) {
+      $("err").textContent = "يرجى إدخال الاسم وكلمة السر!";
+      return;
+    }
+
+    const email = inputName.includes("@") ? inputName : `${inputName}@qism.com`;
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await loadUserAndBootstrap(userCredential.user.uid);
+    } catch (error) {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-email') {
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const uid = userCredential.user.uid;
+          
+          let role = "user";
+          if (inputName === "الأدمن العام" || inputName === "admin") { role = "super_admin"; }
+
+          await setDoc(doc(db, "users", uid), {
+            username: inputName,
+            role: role,
+            coins: 100, 
+            createdAt: serverTimestamp()
+          });
+
+          await loadUserAndBootstrap(uid);
+        } catch (createError) {
+          $("err").textContent = "فشل تسجيل الحساب: " + createError.message;
+        }
+      } else {
+        $("err").textContent = "خطأ في الاتصال: " + error.message;
+      }
+    }
+  };
+
+  async function loadUserAndBootstrap(uid) {
+    const userDoc = await getDoc(doc(db, "users", uid));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      currentUid = uid;
+      currentUsername = data.username;
+      currentUserRole = data.role;
+      
+      $("coins-badge").textContent = `🪙 ${data.coins || 0} عملة`;
+      $("login").style.display = "none";
+      $("chat-app").style.display = "flex";
+      
+      initRoomsSystem();
+      selectRoom(currentRoomId);
+    }
+  }
+
+  // تهيئة غرف الدول العربية الحية
+  function initRoomsSystem() {
+    const sidebar = $("rooms-sidebar");
+    sidebar.innerHTML = "";
+    
+    arabicCountries.forEach(country => {
+      setDoc(doc(db, "rooms", country.id), {
+        name: country.name,
+        status: "open", 
+        adminId: "default"
+      }, { merge: true });
+
+      onSnapshot(doc(db, "rooms", country.id), (docSnap) => {
